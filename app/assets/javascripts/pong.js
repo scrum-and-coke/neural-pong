@@ -10,17 +10,37 @@ var context = canvas.getContext('2d');
 var player = new Player();
 var computer = new Computer();
 var ball = new Ball(300, 200);
+var userPoints = 0;
+var aiPoints = 0;
+var pause = true;
 
 var keysDown = {};
 
 var render = function () {
     context.fillStyle = "#008080";
     context.fillRect(0, 0, width, height);
+    context.fill();
+  	context.fillStyle = "#ffffff";
+    context.font = "20px Arial";
+    context.fillText(userPoints, 550, 50);
+    context.fillText(aiPoints.toString(), 50, 50);
     player.render();
     computer.render();
     ball.render();
+    gameState();
 };
 
+var gameState = function() {
+    if (userPoints >= 2)
+    {
+    	pause = false;
+      context.fillText("You win!", 200, 200);
+    }else if (aiPoints >=2)
+    {
+    	pause = false;
+    	context.fillText("You Lose!",200,205);
+    }
+}
 var update = function () {
     player.update();
     computer.update(ball);
@@ -28,9 +48,11 @@ var update = function () {
 };
 
 var step = function () {
+if(pause){
     update();
     render();
     animate(step);
+    }
 };
 
 function Paddle(x, y, width, height) {
@@ -128,6 +150,11 @@ Ball.prototype.update = function (paddle1, paddle2) {
     var bottom_x = this.x + 5;
     var bottom_y = this.y + 5;
 
+    if(this.x_speed ==0 && this.y_speed == 0 && keyCode == 32)
+    {
+      this.x_speed = 3;
+    }
+    //if ball hits the wall bounce back
     if (this.y - 5 < 0) {
         this.y = 5;
         this.y_speed = -this.y_speed;
@@ -136,11 +163,20 @@ Ball.prototype.update = function (paddle1, paddle2) {
         this.y_speed = -this.y_speed;
     }
 
-    if (this.x < 0 || this.x > 600) {
+    //reset ball back to center
+    if (this.x < 0) {
         this.y_speed = 0;
-        this.x_speed = 3;
+        this.x_speed = -3;
         this.y = 200;
         this.x = 300;
+        userPoints++;
+    }else if(this.x > 600)
+    {
+      this.y_speed = 0;
+      this.x_speed = 3;
+      this.y = 200;
+      this.x = 300;
+      aiPoints++;
     }
 
     if (top_x > 300) {
@@ -160,6 +196,7 @@ Ball.prototype.update = function (paddle1, paddle2) {
 
 document.body.appendChild(canvas);
 animate(step);
+
 
 window.addEventListener("keydown", function (event) {
     keysDown[event.keyCode] = true;
