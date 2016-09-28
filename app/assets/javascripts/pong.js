@@ -109,7 +109,7 @@ Player.prototype.update = function () {
 function Ball(x, y) {
     this.x = x;
     this.y = y;
-    this.x_speed = 3;
+    this.x_speed = 0;
     this.y_speed = 0;
 }
 
@@ -128,6 +128,11 @@ Ball.prototype.update = function (paddle1, paddle2) {
     var bottom_x = this.x + 5;
     var bottom_y = this.y + 5;
 
+    if(this.x_speed ==0 && this.y_speed == 0 && keyCode == 32)
+    {
+      this.x_speed = 3;
+    }
+    //if ball hits the wall bounce back
     if (this.y - 5 < 0) {
         this.y = 5;
         this.y_speed = -this.y_speed;
@@ -136,6 +141,7 @@ Ball.prototype.update = function (paddle1, paddle2) {
         this.y_speed = -this.y_speed;
     }
 
+    //reset ball back to center
     if (this.x < 0 || this.x > 600) {
         this.y_speed = 0;
         this.x_speed = 3;
