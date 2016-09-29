@@ -175,7 +175,7 @@ $(function() {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = "50px Helvetica";
     ctx.fillText(playerScore, 100, 50);
-    ctx.fillText(aiScore, cWidth - 100, 50);
+    ctx.fillText(aiScore, cWidth - 125, 50);
 
     ctx.strokeStyle = '#FFFFFF';
     ctx.beginPath();
