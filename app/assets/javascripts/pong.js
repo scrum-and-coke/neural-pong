@@ -201,4 +201,17 @@ $(function() {
   });
 
   animate(step);
+
+
+
+  $('#logo').on('click', function(){
+    $.ajax({
+      type: "GET",
+      url: "/pong/hi",
+      dataType: 'text',
+      success: function(data) { alert("Hello from the server at " + data); },
+      error: function(jqXHR, textStatus, errorThrown) {console.log(textStatus, errorThrown);}
+    });
+  });
+
 });
