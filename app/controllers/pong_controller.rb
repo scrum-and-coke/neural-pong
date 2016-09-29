@@ -1,11 +1,10 @@
 class PongController < ActionController::Base
-layout 'application'
-  def index
+  layout 'application'
 
+  def index
   end
 
   def hi
-    render json: DateTime.now
+    render text: DateTime.now
   end
-
 end
