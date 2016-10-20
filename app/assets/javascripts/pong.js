@@ -40,8 +40,8 @@ $(function() {
   var PADDLE_HEIGHT = cHeight/6;
   var PADDLE_DIST_FROM_SIDE = 15;
 
-  var network = new Architect.Perceptron(5, 5, 1);
-  var trainer = new Trainer(network);
+  var network = new synaptic.Architect.Perceptron(5, 5, 1);
+  var trainer = new synaptic.Trainer(network);
 
   var Paddle = function(id, x_pos, controller) {
     this.id = id;
@@ -54,7 +54,7 @@ $(function() {
   };
 
   Paddle.prototype.move = function(ball) {
-    this.direction = this.controller(ball);
+    this.direction = this.controller(ball, this);
     this.position.y += this.direction*this.speed;
     if (this.position.y <= 0)
       this.position.y = 0;
@@ -82,7 +82,7 @@ $(function() {
       x: 0,
       y: 0
     },
-    speed: 4,
+    speed: 8,
     stopped: true
   };
 
@@ -115,11 +115,14 @@ $(function() {
   ball.collide = function(paddleL, paddleR) {
     if (this.position.x <= 0) {
       aiScore++;
+      // discardPlayerData();
+      savePlayerData();
       this.reset();
     }
 
     if (this.position.x >= cWidth) {
       playerScore++;
+      savePlayerData();
       this.reset();
     }
 
@@ -165,6 +168,10 @@ $(function() {
       return 0;
   };
 
+  var nnController = function(ball, paddle) {
+    return network.propagate([ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, paddle.position.y]);
+  }
+
   var leftPaddle = new Paddle('left', PADDLE_DIST_FROM_SIDE, userController);
   var rightPaddle = new Paddle('right', cWidth - PADDLE_DIST_FROM_SIDE, aiController);
 
@@ -184,13 +191,29 @@ $(function() {
   // }
 
   var playerData = [];
-  function savePlayerData() {
-    playerData.push({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
+  var playerHold = []
+  function storePlayerData() {
+    playerHold.push({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
   }
 
+  function discardPlayerData() {
+    playerHold.length = 0;
+  }
+
+  function savePlayerData() {
+    playerData = playerData.concat(playerHold);
+  }
+
+
   function uploadPlayerData() {
-    $.post('/api/upload', playerData, function(data) {
-      trainer.train(data);
+    $.ajax({
+      type: 'POST',
+      url: '/api/upload',
+      data: { 'data': JSON.stringify(playerData) },
+      success: function(data) {
+        trainer.train(data);
+        rightPaddle.controller = nnController;
+      }
     });
   }
 
@@ -216,7 +239,18 @@ $(function() {
     ball.move();
     ball.collide(leftPaddle, rightPaddle);
     ball.render();
-    savePlayerData();
+
+    if(playerScore + aiScore == 5) {
+      playerScore = 0;
+      aiScore = 0;
+      ball.stopped = true;
+      ball.position = {
+        x: cWidth/2,
+        y: cHeight/2
+      };
+      uploadPlayerData();
+    }
+    storePlayerData();
     animate(step);
   };
 
@@ -225,6 +259,7 @@ $(function() {
       ball.direction = normalize(subtract(centre(leftPaddle), centre(ball)));
       ball.stopped = false;
     }
+    if (event.keyCode == 16) console.log(JSON.stringify(playerHold));
   });
 
   animate(step);

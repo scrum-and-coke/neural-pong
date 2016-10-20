@@ -3,5 +3,6 @@ Rails.application.routes.draw do
   root to: 'pong#index'
 
   post '/api/train', to: 'pong#train'
+  post '/api/upload', to: 'pong#upload_training_data'
   get '/pong/hi', to: 'pong#hi'
 end
