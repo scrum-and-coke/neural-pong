@@ -40,6 +40,9 @@ $(function() {
   var PADDLE_HEIGHT = cHeight/6;
   var PADDLE_DIST_FROM_SIDE = 15;
 
+  var network = new Architect.Perceptron(5, 5, 1);
+  var trainer = new Trainer(network);
+
   var Paddle = function(id, x_pos, controller) {
     this.id = id;
     this.width = PADDLE_WIDTH;
@@ -68,8 +71,9 @@ $(function() {
 
   var ball = {
     lastTouched: '',
-    width: BALL_RADIUS,
-    height: BALL_RADIUS,
+    radius: BALL_RADIUS,
+    width: BALL_RADIUS*2,
+    height: BALL_RADIUS*2,
     position: {
       x: cWidth/2,
       y: cHeight/2
@@ -119,7 +123,7 @@ $(function() {
       this.reset();
     }
 
-    if (this.position.y <= 0 || this.position.y >= cHeight)
+    if (this.position.y + this.radius <= 0 || this.position.y + this.radius >= cHeight)
       this.direction.y = -this.direction.y;
     else if (this.position.x <= rightSide(paddleL).x && within(this, paddleL))
       this.bounceOffPaddle(paddleL);
@@ -129,7 +133,7 @@ $(function() {
 
   ball.render = function() {
     ctx.beginPath();
-    ctx.arc(this.position.x, this.position.y, 5, 2 * Math.PI, false);
+    ctx.arc(this.position.x, this.position.y, this.radius, 2 * Math.PI, false);
     ctx.fillStyle = '#FFFFFF';
     ctx.fill();
   };
@@ -168,6 +172,28 @@ $(function() {
           window.setTimeout(callback, 1000 / 60);
   };
 
+  // var inputs = []
+  // var outputs = []
+  // function savePlayerData() {
+  //   inputs.push([ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y]);
+  //   outputs.push(leftPaddle.direction);
+  // }
+
+  // function trainNeuralNetwork() {
+  //   $.post('/api/train', )
+  // }
+
+  var playerData = [];
+  function savePlayerData() {
+    playerData.push({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
+  }
+
+  function uploadPlayerData() {
+    $.post('/api/upload', playerData, function(data) {
+      trainer.train(data);
+    });
+  }
+
   var step = function() {
     ctx.fillStyle = '#00b2a0';
     ctx.fillRect(0, 0, cWidth, cHeight);
@@ -190,6 +216,7 @@ $(function() {
     ball.move();
     ball.collide(leftPaddle, rightPaddle);
     ball.render();
+    savePlayerData();
     animate(step);
   };
 
@@ -208,8 +235,8 @@ $(function() {
     $.ajax({
       type: "GET",
       url: "/pong/hi",
-      dataType: 'text',
-      success: function(data) { alert("Hello from the server at " + data); },
+      dataType: 'json',
+      success: function(data) { alert("Hello from the server at " + data.date); },
       error: function(jqXHR, textStatus, errorThrown) {console.log(textStatus, errorThrown);}
     });
   });
