@@ -24,7 +24,51 @@ function centre(object) {
   return { x: object.position.x + object.width/2, y: object.position.y + object.height/2 };
 }
 
+ function getRandomArbitrary(min, max) {
+     return Math.random() * (max - min) + min;
+}
+
+function randomLaunch(object){
+    var getY = getRandomArbitrary(-700,700);
+    if(getY < 40 && getY > -40)
+      getY+=40;
+    return { x: object.position.x + object.width/2, y: object.position.y + (object.height/2 + getY) };
+}
+
+//ball angle depending on where it hits
+// function ballYAngle(ball, paddle, moved){
+//
+//    var upperhalf = (paddle.position.y + (paddle.height / 2));
+//    var lowerhalf = upperhalf + (paddle.height /2);
+//
+//    if(ball.position.y >= paddle.position.y && ball.position.y < upperhalf){
+//      var dist = ball.position.y- paddle.position.y;
+//    }
+//    else if (ball.position.y >= upperhalf && ball.position.y < lowerhalf){
+//      var dist = lowerhalf - ball.position.y;
+//    }
+//    if(moved){
+//     ball.direction.y *= -((Math.abs((dist - (paddle.height/2)))/ 500) + 1);
+//   }else {
+//      ball.direction.y *= ((Math.abs((dist - (paddle.height/2)))/ 500) + 1);
+//    }
+//    //alert(ball.direction.y + "!");
+// }
+//
 function within(ball, paddle) {
+  //  if(!ball.position.x <= 0 && !ball.position.x >= 800)
+  //  {
+  //   var upperhalf = (paddle.position.y + (paddle.height / 2));
+  //   var lowerhalf = upperhalf + (paddle.height /2);
+  //
+  //   if(ball.position.y >= paddle.position.y && ball.position.y < upperhalf)
+  //     var dist =  ball.position.y- paddle.position.y;
+  //   else if (ball.position.y >= upperhalf && ball.position.y < lowerhalf)
+  //     var dist = lowerhalf - ball.position.y;
+  //
+  //   ball.direction.x *= (Math.abs((dist - (paddle.height/2))) / 1000) + 1;
+  // }
+
   return ball.position.y >= paddle.position.y && ball.position.y <= paddle.position.y + paddle.height;
 }
 
@@ -39,6 +83,7 @@ $(function() {
   var PADDLE_WIDTH = 5;
   var PADDLE_HEIGHT = cHeight/6;
   var PADDLE_DIST_FROM_SIDE = 15;
+  var moving = false;
 
   var Paddle = function(id, x_pos, controller) {
     this.id = id;
@@ -84,6 +129,8 @@ $(function() {
 
   ball.move = function() {
     this.position = add(this.position, mult(this.direction, this.speed));
+    this.direction.x*=1.00001;
+    document.getElementById("ballspeed").innerHTML = "Ball Speed: " + (Math.abs(this.direction.x)).toFixed(4);
   };
 
   ball.reset = function() {
@@ -98,10 +145,12 @@ $(function() {
   ball.bounceOffPaddle = function(paddle) {
     if (this.lastTouched != paddle.id) {
       this.direction = {
-        x: -this.direction.x,
+        x: -(this.direction.x * 1.05),
+        //x: -(this.direction.x),
         y: this.direction.y
       };
     }
+    //ballYAngle(this, paddle, moving);
     this.lastTouched = paddle.id;
   }
 
@@ -119,12 +168,13 @@ $(function() {
       this.reset();
     }
 
-    if (this.position.y <= 0 || this.position.y >= cHeight)
+    if (this.position.y <= 5 || this.position.y >= cHeight-5)
       this.direction.y = -this.direction.y;
-    else if (this.position.x <= rightSide(paddleL).x && within(this, paddleL))
+    else if (this.position.x - 4 <= rightSide(paddleL).x && within(this, paddleL))// && !(this.position.x + this.width) < paddleL.position.x)
       this.bounceOffPaddle(paddleL);
-    else if (this.position.x >= paddleR.position.x && within(this, paddleR))
+    else if (this.position.x + 4 >= paddleR.position.x && within(this, paddleR))// && !this.position.x > (paddleR.position.x + paddleR.width))
       this.bounceOffPaddle(paddleR);
+
   };
 
   ball.render = function() {
@@ -146,8 +196,20 @@ $(function() {
 
     return function() {
       var direction = 0;
-      if (keysDown[38]) direction -= 1;
-      if (keysDown[40]) direction += 1;
+      if (keysDown[38])
+      {
+        direction -= 1;
+        moving = true;
+      }else {
+        moving = false;
+      }
+      if (keysDown[40])
+      {
+        direction += 1;
+        moving = true;
+      }else {
+        moving = false;
+      }
       return direction;
     }
   })();
@@ -195,20 +257,19 @@ $(function() {
 
   window.addEventListener('keydown', function(event) {
     if (event.keyCode == 32 && ball.stopped) {
-      ball.direction = normalize(subtract(centre(leftPaddle), centre(ball)));
+      ball.direction = normalize(subtract(randomLaunch(leftPaddle), centre(ball)));
       ball.stopped = false;
+      //randomLaunch
     }
   });
 
   animate(step);
 
-
-
   $('#logo').on('click', function(){
     $.ajax({
       type: "GET",
       url: "/pong/hi",
-      dataType: 'text',
+      dataType: 'JSON',
       success: function(data) { alert("Hello from the server at " + data); },
       error: function(jqXHR, textStatus, errorThrown) {console.log(textStatus, errorThrown);}
     });

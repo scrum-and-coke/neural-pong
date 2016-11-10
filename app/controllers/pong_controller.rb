@@ -5,6 +5,6 @@ class PongController < ActionController::Base
   end
 
   def hi
-    render text: DateTime.now
+    render json: DateTime.now
   end
 end
