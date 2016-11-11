@@ -5,4 +5,6 @@ Rails.application.routes.draw do
   post '/api/train', to: 'pong#train'
   post '/api/upload', to: 'pong#upload_training_data'
   get '/pong/hi', to: 'pong#hi'
+
+  mount ActionCable.server => '/cable'
 end

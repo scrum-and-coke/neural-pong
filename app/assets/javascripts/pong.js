@@ -40,7 +40,7 @@ $(function() {
   var PADDLE_HEIGHT = cHeight/6;
   var PADDLE_DIST_FROM_SIDE = 15;
 
-  var network = new synaptic.Architect.Perceptron(5, 5, 1);
+  var network = new synaptic.Architect.Perceptron(5, 10, 1);
   var trainer = new synaptic.Trainer(network);
 
   var Paddle = function(id, x_pos, controller) {
@@ -97,6 +97,7 @@ $(function() {
     };
     this.direction = { x: 0, y: 0 };
     this.stopped = true;
+    this.lastTouched = '';
   }
 
   ball.bounceOffPaddle = function(paddle) {
@@ -115,14 +116,11 @@ $(function() {
   ball.collide = function(paddleL, paddleR) {
     if (this.position.x <= 0) {
       aiScore++;
-      // discardPlayerData();
-      savePlayerData();
       this.reset();
     }
 
     if (this.position.x >= cWidth) {
       playerScore++;
-      savePlayerData();
       this.reset();
     }
 
@@ -168,54 +166,34 @@ $(function() {
       return 0;
   };
 
-  var nnController = function(ball, paddle) {
-    return network.propagate([ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, paddle.position.y]);
-  }
+
+  var serverController = (function() {
+    var direction = 0;
+    App.nnChannel = App.cable.subscriptions.create('NeuralNetworkChannel', {
+      received: function(dir) { direction = dir; },
+      train: function() { this.perform('train'); },
+      store: function(data) { this.perform('store', data); },
+      move: function(ball, paddle) { this.perform('move', {'ball': ball, 'paddle': paddle }); }
+    });
+
+    return function(ball, paddle) { App.nnChannel.move(centre(ball), centre(paddle)); return direction; };
+  })();
 
   var leftPaddle = new Paddle('left', PADDLE_DIST_FROM_SIDE, userController);
-  var rightPaddle = new Paddle('right', cWidth - PADDLE_DIST_FROM_SIDE, aiController);
+
+  var learningRate = .3;
+  var nnController = function(ball, paddle) {
+    var outputs = network.activate([ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, paddle.position.y]);
+    network.propagate(learningRate, [leftPaddle.direction + .5]);
+    return outputs - .5;
+    // return outputs;
+  }
+
+  var rightPaddle = new Paddle('right', cWidth - PADDLE_DIST_FROM_SIDE, nnController);
 
   var animate = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
           window.setTimeout(callback, 1000 / 60);
   };
-
-  // var inputs = []
-  // var outputs = []
-  // function savePlayerData() {
-  //   inputs.push([ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y]);
-  //   outputs.push(leftPaddle.direction);
-  // }
-
-  // function trainNeuralNetwork() {
-  //   $.post('/api/train', )
-  // }
-
-  var playerData = [];
-  var playerHold = []
-  function storePlayerData() {
-    playerHold.push({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
-  }
-
-  function discardPlayerData() {
-    playerHold.length = 0;
-  }
-
-  function savePlayerData() {
-    playerData = playerData.concat(playerHold);
-  }
-
-
-  function uploadPlayerData() {
-    $.ajax({
-      type: 'POST',
-      url: '/api/upload',
-      data: { 'data': JSON.stringify(playerData) },
-      success: function(data) {
-        trainer.train(data);
-        rightPaddle.controller = nnController;
-      }
-    });
-  }
 
   var step = function() {
     ctx.fillStyle = '#00b2a0';
@@ -240,7 +218,7 @@ $(function() {
     ball.collide(leftPaddle, rightPaddle);
     ball.render();
 
-    if(playerScore + aiScore == 5) {
+    if(playerScore + aiScore == 1) {
       playerScore = 0;
       aiScore = 0;
       ball.stopped = true;
@@ -248,9 +226,9 @@ $(function() {
         x: cWidth/2,
         y: cHeight/2
       };
-      uploadPlayerData();
+      App.nnChannel.train();
     }
-    storePlayerData();
+    App.nnChannel.store({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
     animate(step);
   };
 
