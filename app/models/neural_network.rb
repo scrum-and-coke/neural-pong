@@ -1,23 +1,26 @@
 require 'singleton'
 
 class NeuralNetwork
-  class Persistence
+  class TrainingData
     include Mongoid::Document
-    # include Mongoid::Timestamps
-    store_in collection: "neural_network"
-    field :weights, type: Array
-    field :data, type: Array
+    include Mongoid::Timestamps
+    store_in collection: "training_data"
+    field :inputs, type: Array
+    field :output, type: Integer
+    index({ data_point: 1 }, { unique: true })
   end
 
-  # def save(data)
-  #   @data = (@data || []) + data
-  # end
-  #
-  # def get_training_data
-  #   @data
-  # end
+  class Network
+    include Mongoid::Document
+    include Mongoid::Timestamps
+    store_in collection: "network"
+    field :hidden_weights, type: Array
+    field :hidden_bias, type: Array
+    field :output_weights, type: Array
+    field :output_bias, type: Array
+    index({ network_version: 1 }, { unique: true })
+  end
 
-  require 'ruby-fann'
   private_class_method :new
 
   @@instance = nil
@@ -26,33 +29,19 @@ class NeuralNetwork
   end
 
   def initialize(options = {})
-    @neural_network = RubyFann::Standard.new({ :num_inputs=>5, :hidden_neurons=>[5], :num_outputs=>1 })
-    # @model = Persistence.first_or_initialize
   end
 
-  def train(inputs, outputs)
-    # @model.inputs = (@model.inputs || []) + inputs
-    # @model.outputs = (@model.outputs || []) + outputs
+  # def store(data)
+  #   TrainingData.collection.insert_one(data)
+  # end
 
-    @inputs = (@inputs || []) + inputs
-    @outputs = (@outputs || []) + outputs
-    @training_data = RubyFann::TrainData.new(inputs: @inputs, desired_outputs: @outputs)
-    @neural_network.train_on_data(@training_data, 1000, 10, 0.1)
-
-    # @model.weights = @neural_network.get_neurons().group_by(&:layer).sort.map! { |_,layer| layer.map!(&:value) }
-    # @model.save
+  def self.train(data)
+    TrainingData.collection.insert_many(data)
+    system('python tf_network.py')
   end
 
-  # def get_weights
-  #   @model.weights
-  # end
+  def self.get_network
+    Network.order_by([:created_at, :desc]).first
+  end
 
-  # def get_training_data
-  #   { inputs: @model.inputs, outputs: @model.outputs }
-  # end
-  #
-  # def save(data)
-  #   @model.data = (@model.data || []) + data
-  #   @model.save
-  # end
 end

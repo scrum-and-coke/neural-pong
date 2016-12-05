@@ -28,6 +28,24 @@ function within(ball, paddle) {
   return ball.position.y >= paddle.position.y && ball.position.y <= paddle.position.y + paddle.height;
 }
 
+window.Pong = {};
+
+window.Pong.sigmoid = function(x) {
+  return 1 / (1 + Math.exp(-x));
+};
+
+window.Pong.softmax = function(arr) {
+  for (var i = 0; i < output.length; ++i)
+    arr[i] = Math.exp(arr[i]) / arr.map(y => Math.exp(y)).reduce((a, b) => a + b);
+
+  return arr;
+};
+
+window.Pong.argmax = function(arr) {
+  var max = Math.max.apply(null, arr);
+  return arr.findIndex(function(el) { return el == max; });
+};
+
 $(function() {
 
   var canvas = document.getElementById('canvas');
@@ -170,7 +188,8 @@ $(function() {
   var serverController = (function() {
     var direction = 0;
     App.nnChannel = App.cable.subscriptions.create('NeuralNetworkChannel', {
-      received: function(dir) { direction = dir; },
+      // received: function(dir) { direction = dir; },
+      received: function(data) { $.get('/api/train'); },
       train: function() { this.perform('train'); },
       store: function(data) { this.perform('store', data); },
       move: function(ball, paddle) { this.perform('move', {'ball': ball, 'paddle': paddle }); }
@@ -226,7 +245,11 @@ $(function() {
         x: cWidth/2,
         y: cHeight/2
       };
-      App.nnChannel.train();
+      // App.nnChannel.train();
+      $.ajax({
+        type: 'GET',
+        url: '/api/network'
+      });
     }
     App.nnChannel.store({ 'input': [ball.position.x, ball.position.y, ball.direction.x, ball.direction.y, leftPaddle.position.y], 'output': [leftPaddle.direction] });
     animate(step);
