@@ -35,8 +35,9 @@ window.Pong.sigmoid = function(x) {
 };
 
 window.Pong.softmax = function(arr) {
+  var denom = arr.map(y => Math.exp(y)).reduce((a, b) => a + b);
   for (var i = 0; i < output.length; ++i)
-    arr[i] = Math.exp(arr[i]) / arr.map(y => Math.exp(y)).reduce((a, b) => a + b);
+    arr[i] = Math.exp(arr[i]) / denom;
 
   return arr;
 };
