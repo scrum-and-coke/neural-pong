@@ -1,5 +1,6 @@
 
 import tensorflow as tf
+import numpy as np
 from pymongo import MongoClient
 
 INPUT_SIZE = 5
@@ -23,18 +24,21 @@ train = trainer.minimize(cost)
 
 client = MongoClient('localhost', 27017)
 db = client.neural_pong_development
-training_data = db.training_data.find()
+training_data = [obj for obj in db.training_data.find()]
 
-X_train = [obj['inputs'] for obj in training_data]
+X_train = [obj['input'] for obj in training_data]
 y_train = [obj['output'] for obj in training_data]
+X_train = np.array(X_train)
+y_train = np.array(y_train)
+print X_train
+print y_train
 
 
 sess = tf.Session()
 init = tf.initialize_all_variables()
 sess.run(init)
 
-print X_train
 sess.run(train, feed_dict={ inputs: X_train, y: y_train })
 h_weights, h_bias, o_weights, o_bias = sess.run([W1, b1, W2, b2], feed_dict={ inputs: X_train })
 
-db.layers.insert_one({ 'hidden_weights': h_weights.T.tolist(), 'hidden_bias': h_bias.tolist(), 'output_weights': o_weights.T.tolist(), 'output_bias': o_bias.tolist() })
+db.network.insert_one({ 'hidden_weights': h_weights.T.tolist(), 'hidden_bias': h_bias.tolist(), 'output_weights': o_weights.T.tolist(), 'output_bias': o_bias.tolist() })

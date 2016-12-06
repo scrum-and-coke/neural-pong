@@ -7,7 +7,7 @@ class NeuralNetwork
     store_in collection: "training_data"
     field :inputs, type: Array
     field :output, type: Integer
-    index({ data_point: 1 }, { unique: true })
+    # index({ data_point: 1 }, { unique: true })
   end
 
   class Network
@@ -18,7 +18,7 @@ class NeuralNetwork
     field :hidden_bias, type: Array
     field :output_weights, type: Array
     field :output_bias, type: Array
-    index({ network_version: 1 }, { unique: true })
+    # index({ network_version: 1 }, { unique: true })
   end
 
   private_class_method :new
@@ -37,11 +37,11 @@ class NeuralNetwork
 
   def self.train(data)
     TrainingData.collection.insert_many(data)
-    system('python tf_network.py')
+    system("python app/models/tf_network.py")
   end
 
   def self.get_network
-    Network.order_by([:created_at, :desc]).first
+    Network.order_by([:_id, :desc]).first
   end
 
 end

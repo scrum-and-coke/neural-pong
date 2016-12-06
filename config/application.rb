@@ -14,6 +14,8 @@ Bundler.require(*Rails.groups)
 
 module NeuralPong
   class Application < Rails::Application
+    config.action_controller.perform_caching = false
+    config.cache_store = :null_store
     config.mongoid.logger = Logger.new($stdout, :warn)
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration should go into files in config/initializers

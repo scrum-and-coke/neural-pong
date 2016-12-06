@@ -6,6 +6,9 @@ class PongController < ActionController::Base
 
   def get_network
     @network = NeuralNetwork.get_network
+    respond_to do |format|
+      format.js
+    end
   end
 
   def hi
