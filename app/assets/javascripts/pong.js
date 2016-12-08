@@ -50,7 +50,7 @@ window.Pong.argmax = function(arr) {
 function getNetwork() {
   return $.ajax({
     url: '/api/network',
-    dataType: 'script',
+    dataType: 'script'
   });
 }
 
@@ -65,10 +65,10 @@ $(function() {
 
     var PADDLE_WIDTH = 5;
     var PADDLE_HEIGHT = cHeight/6;
-    var PADDLE_DIST_FROM_SIDE = 15;
+    var PADDLE_DIST_FROM_SIDE = 0;
 
-    var network = new synaptic.Architect.Perceptron(5, 10, 1);
-    var trainer = new synaptic.Trainer(network);
+    // var network = new synaptic.Architect.Perceptron(5, 10, 1);
+    // var trainer = new synaptic.Trainer(network);
 
     var Paddle = function(id, x_pos, controller) {
       this.id = id;
@@ -76,7 +76,7 @@ $(function() {
       this.height = PADDLE_HEIGHT;
       this.position = { x: x_pos, y: cHeight/2 - PADDLE_HEIGHT/2 };
       this.direction = 0;
-      this.speed = 4;
+      this.speed = 1;
       this.controller = controller;
     };
 
@@ -109,7 +109,7 @@ $(function() {
         x: 0,
         y: 0
       },
-      speed: 8,
+      speed: 1,
       stopped: true
     };
 
@@ -125,7 +125,7 @@ $(function() {
       this.direction = { x: 0, y: 0 };
       this.stopped = true;
       this.lastTouched = '';
-    }
+    };
 
     ball.bounceOffPaddle = function(paddle) {
       if (this.lastTouched != paddle.id) {
@@ -135,28 +135,40 @@ $(function() {
         };
       }
       this.lastTouched = paddle.id;
-    }
+      if (paddle.id == 'left')
+        playerScore++;
+      else
+        aiScore++;
+    };
 
     var playerScore = 0;
     var aiScore = 0;
 
     ball.collide = function(paddleL, paddleR) {
-      if (this.position.x <= 0) {
-        aiScore++;
-        this.reset();
+      if (this.position.x + this.radius <= 0) {
+        // aiScore++;
+        // this.reset();
+        playerScore = 0;
+        this.direction.x = -this.direction.x;
       }
 
-      if (this.position.x >= cWidth) {
-        playerScore++;
-        this.reset();
+      else if (this.position.x + this.radius >= cWidth) {
+        // playerScore++;
+        // this.reset();
+        aiScore = 0;
+        this.direction.x = -this.direction.x;
       }
 
-      if (this.position.y + this.radius <= 0 || this.position.y + this.radius >= cHeight)
+      else if (this.position.y + this.radius <= 0 || this.position.y + this.radius >= cHeight)
         this.direction.y = -this.direction.y;
-      else if (this.position.x <= rightSide(paddleL).x && within(this, paddleL))
+      else if (this.position.x <= rightSide(paddleL).x && within(this, paddleL)) {
         this.bounceOffPaddle(paddleL);
-      else if (this.position.x >= paddleR.position.x && within(this, paddleR))
+        // playerScore++;
+      }
+      else if (rightSide(this).x >= paddleR.position.x && within(this, paddleR)) {
         this.bounceOffPaddle(paddleR);
+        // aiScore++;
+      }
     };
 
     ball.render = function() {
@@ -216,7 +228,7 @@ $(function() {
       store: function(data) { this.perform('store', data); }
     });
 
-    var leftPaddle = new Paddle('left', PADDLE_DIST_FROM_SIDE, aiController);
+    var leftPaddle = new Paddle('left', PADDLE_DIST_FROM_SIDE, userController);
 
     var learningRate = .3;
     var nnController = function(ball, paddle) {
@@ -228,14 +240,17 @@ $(function() {
       return window.Pong.predict([ball.position.x/cWidth, ball.position.y/cHeight, ball.direction.x, ball.direction.y, paddle.position.y/cHeight]) - 1;
     }
 
-    var rightPaddle = new Paddle('right', cWidth - PADDLE_DIST_FROM_SIDE, nnController);
+    var rightPaddle = new Paddle('right', cWidth - PADDLE_DIST_FROM_SIDE - PADDLE_WIDTH, window.Pong.predict == undefined ? aiController : nnController);
 
     var animate = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || function (callback) {
             window.setTimeout(callback, 1000 / 60);
     };
 
     var output;
-    var step = function() {
+    var lastTimestamp = null;
+    var FPS = 600;
+    var step = function(timestamp) {
+
       ctx.fillStyle = '#00b2a0';
       ctx.fillRect(0, 0, cWidth, cHeight);
 
@@ -250,29 +265,36 @@ $(function() {
       ctx.lineTo(cWidth/2, cHeight);
       ctx.stroke();
 
-      leftPaddle.move(ball);
+      var elapsed = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+      var frames = elapsed/(1000/FPS);
+      for (var i = 0; i < frames; ++i) {
+        if (!ball.stopped) {
+          leftPaddle.move(ball);
+          rightPaddle.move(ball);
+          ball.move();
+          ball.collide(leftPaddle, rightPaddle);
+          output = [0,0,0];
+          output[leftPaddle.direction + 1] = 1;
+          // App.nnChannel.store({ 'input': [ball.position.x/cWidth, ball.position.y/cHeight, ball.direction.x, ball.direction.y, leftPaddle.position.y/cHeight], 'output': output });
+        }
+      }
+
       leftPaddle.render();
-      rightPaddle.move(ball);
       rightPaddle.render();
-      ball.move();
-      ball.collide(leftPaddle, rightPaddle);
       ball.render();
 
-      if(playerScore + aiScore == 1) {
-        playerScore = 0;
-        aiScore = 0;
-        ball.stopped = true;
-        ball.position = {
-          x: cWidth/2,
-          y: cHeight/2
-        };
-        App.nnChannel.train();
-      }
-      if (!ball.stopped) {
-        output = [0,0,0];
-        output[leftPaddle.direction + 1] = 1;
-        App.nnChannel.store({ 'input': [ball.position.x/cWidth, ball.position.y/cHeight, ball.direction.x, ball.direction.y, leftPaddle.position.y/cHeight], 'output': output });
-      }
+      // if(playerScore + aiScore == 1) {
+      //   playerScore = 0;
+      //   aiScore = 0;
+      //   ball.stopped = true;
+      //   ball.position = {
+      //     x: cWidth/2,
+      //     y: cHeight/2
+      //   };
+        // App.nnChannel.train();
+      // }
+
       animate(step);
     };
 
@@ -281,10 +303,10 @@ $(function() {
         // ball.direction = normalize(subtract(centre(leftPaddle), centre(ball)));
         ball.direction.x = -1;
         ball.direction.y = -1;
-        ball.direction = normalize(ball.direction);
+        // ball.direction = normalize(ball.direction);
         ball.stopped = false;
       }
-      if (event.keyCode == 16) console.log(JSON.stringify(playerHold));
+      // if (event.keyCode == 16) App.nnChannel.train();
     });
 
     animate(step);

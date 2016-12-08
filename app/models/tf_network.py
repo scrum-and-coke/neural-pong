@@ -18,7 +18,7 @@ predict = tf.nn.softmax(output)
 
 y = tf.placeholder(shape=[None,OUTPUT_SIZE], dtype=tf.float32)
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(output, y))
-trainer = tf.train.AdamOptimizer(learning_rate=0.01)
+trainer = tf.train.AdamOptimizer(learning_rate=0.1)
 train = trainer.minimize(cost)
 
 

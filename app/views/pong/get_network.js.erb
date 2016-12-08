@@ -1,4 +1,4 @@
-
+<% if @network.present? %>
 <% layers = [:hidden, :output] %>
 <% max_layer_size = 100 %>
 <% array_size = layers.size * max_layer_size %>
@@ -34,3 +34,4 @@ window.Pong.predict = function(inputs) {
   console.log(output);
   return window.Pong.argmax(output);
 }
+<% end %>

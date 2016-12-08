@@ -2,6 +2,7 @@ class NeuralNetworkChannel < ApplicationCable::Channel
 
   def train
     NeuralNetwork.train(@training_set)
+    @training_set = []
     transmit(true)
   end
 
